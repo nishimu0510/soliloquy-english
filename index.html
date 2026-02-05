@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Soliloquy English</title>
+    <style>
+        :root {
+            --primary: #007aff;
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --bg: #f5f5f7;
+            --card-bg: #ffffff;
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: #d2d2d7;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container { width: 100%; max-width: 500px; }
+
+        /* Settings */
+        .settings { margin-bottom: 16px; }
+        .settings input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 14px;
+            background: var(--card-bg);
+            margin-bottom: 8px;
+        }
+        .settings summary {
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        /* Main recording section */
+        .main-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .record-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #mainBtn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            font-size: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        #mainBtn.recording {
+            background: var(--danger);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255,59,48,0.5);
+        }
+        #mainBtn:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            height: 1.5em;
+            text-align: center;
+        }
+
+        /* State badge */
+        .state-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+        .state-badge.idle { background: #e5e5ea; color: var(--text-secondary); }
+        .state-badge.recording { background: #ffe5e5; color: var(--danger); }
+        .state-badge.transcribing { background: #fff3e5; color: var(--warning); }
+        .state-badge.confirming { background: #e5f0ff; color: var(--primary); }
+        .state-badge.correcting { background: #fff3e5; color: var(--warning); }
+        .state-badge.suggesting { background: #e5ffe5; color: var(--success); }
+
+        /* Text area */
+        .text-section { margin-bottom: 16px; }
+        .text-section label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 6px;
+        }
+        #transcriptArea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+        #transcriptArea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        #transcriptArea:disabled {
+            background: var(--bg);
+            color: var(--text-secondary);
+        }
+
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .action-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .action-btn.primary { background: var(--primary); color: white; }
+        .action-btn.success { background: var(--success); color: white; }
+        .action-btn.warning { background: var(--warning); color: white; }
+        .action-btn.danger { background: var(--danger); color: white; }
+        .action-btn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+
+        /* AI Suggestion panel */
+        .suggestion-panel {
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            display: none;
+        }
+        .suggestion-panel.visible { display: block; }
+        .suggestion-panel h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .suggestion-text {
+            font-size: 16px;
+            color: var(--text);
+            cursor: pointer;
+            padding: 8px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .suggestion-text:hover { background: #f0f0f0; }
+
+        /* Intent input */
+        .intent-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        .intent-section label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* History */
+        .history-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .history-header h3 { margin: 0; font-size: 16px; }
+        .clear-btn {
+            font-size: 12px;
+            color: var(--danger);
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .history-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--bg);
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .history-item-content { flex: 1; }
+        .history-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .history-original { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
+        .history-final { font-size: 15px; color: var(--text); margin-bottom: 4px; }
+        .history-suggestion {
+            font-size: 15px;
+            color: var(--primary);
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .notion-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+        .notion-btn.saved {
+            color: var(--success);
+            border-color: var(--success);
+            cursor: default;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Settings -->
+        <div class="settings">
+            <input type="password" id="apiKey" placeholder="OpenAI API Key">
+            <details>
+                <summary>Notion Settings</summary>
+                <input type="password" id="notionToken" placeholder="Notion Integration Token">
+                <input type="text" id="notionDbId" placeholder="Notion Database ID">
+            </details>
+        </div>
+
+        <!-- Main Section -->
+        <div class="main-section">
+            <div style="text-align: center;">
+                <span class="state-badge idle" id="stateBadge">IDLE</span>
+            </div>
+
+            <div class="record-area">
+                <button id="mainBtn">🎤</button>
+                <div id="status">英語で話してみましょう</div>
+            </div>
+
+            <div class="text-section">
+                <label>認識結果 / Your English</label>
+                <textarea id="transcriptArea" placeholder="録音すると認識結果がここに表示されます..." disabled></textarea>
+            </div>
+
+            <div class="action-buttons" id="actionButtons">
+                <button class="action-btn warning" id="btnVoiceCorrect" disabled title="日本語で修正指示">
+                    🎤 音声修正
+                </button>
+                <button class="action-btn success" id="btnComplete" disabled title="AIに自然な表現を聞く">
+                    ✓ 完了
+                </button>
+                <button class="action-btn secondary" id="btnRetry" disabled title="最初からやり直す">
+                    ↩️ やり直し
+                </button>
+            </div>
+
+            <!-- AI Suggestion Panel -->
+            <div class="suggestion-panel" id="suggestionPanel">
+                <h4>💡 AI's Suggestion</h4>
+                <div class="suggestion-text" id="suggestionText" onclick="speakSuggestion()"></div>
+                <div class="action-buttons">
+                    <button class="action-btn primary" id="btnAccept">採用して保存</button>
+                    <button class="action-btn secondary" id="btnKeepOriginal">元のまま保存</button>
+                </div>
+
+                <div class="intent-section">
+                    <label>伝わらなかった場合は日本語で意図を説明</label>
+                    <div class="intent-display" id="intentDisplay" style="display: none; padding: 8px; background: #fff3e5; border-radius: 8px; margin-bottom: 8px; font-size: 14px;"></div>
+                    <button class="action-btn warning" id="btnResuggestion" style="width: 100%;">🎤 音声で意図を説明して再提案</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="history-section">
+            <div class="history-header">
+                <h3>履歴</h3>
+                <button class="clear-btn" onclick="clearHistory()">Clear all</button>
+            </div>
+            <div id="historyList">
+                <div class="empty-state">まだ履歴がありません</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== State Management =====
+        const AppState = {
+            IDLE: 'idle',
+            RECORDING: 'recording',
+            TRANSCRIBING: 'transcribing',
+            CONFIRMING: 'confirming',
+            CORRECTING: 'correcting',
+            SUGGESTING: 'suggesting'
+        };
+
+        let currentState = AppState.IDLE;
+        let currentData = {
+            original: '',
+            final: '',
+            aiSuggestion: '',
+            intentNote: ''
+        };
+
+        // ===== Audio Context & Recording =====
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioStream = null;
+        let audioCtx = null;
+        let recordingMode = 'english'; // 'english': 英語録音, 'correction': 日本語修正, 'intent': 意図説明
+
+        // ===== DOM Elements =====
+        const mainBtn = document.getElementById('mainBtn');
+        const stateBadge = document.getElementById('stateBadge');
+        const statusText = document.getElementById('status');
+        const transcriptArea = document.getElementById('transcriptArea');
+        const btnVoiceCorrect = document.getElementById('btnVoiceCorrect');
+        const btnComplete = document.getElementById('btnComplete');
+        const btnRetry = document.getElementById('btnRetry');
+        const suggestionPanel = document.getElementById('suggestionPanel');
+        const suggestionText = document.getElementById('suggestionText');
+        const intentDisplay = document.getElementById('intentDisplay');
+        const btnAccept = document.getElementById('btnAccept');
+        const btnKeepOriginal = document.getElementById('btnKeepOriginal');
+        const btnResuggestion = document.getElementById('btnResuggestion');
+        const historyList = document.getElementById('historyList');
+
+        // ===== Utility Functions =====
+        function fetchWithTimeout(url, options, ms = 30000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), ms);
+            return fetch(url, { ...options, signal: controller.signal })
+                .finally(() => clearTimeout(timer));
+        }
+
+        async function initAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+        }
+
+        async function playAudioBlob(blob) {
+            await initAudioContext();
+            const arrayBuffer = await blob.arrayBuffer();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioCtx.destination);
+            source.start();
+            return new Promise(resolve => { source.onended = resolve; });
+        }
+
+        function stopStream() {
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+        }
+
+        function getApiKey() {
+            return document.getElementById('apiKey').value;
+        }
+
+        function hasNotionConfig() {
+            return !!(localStorage.getItem('notionToken') && localStorage.getItem('notionDbId'));
+        }
+
+        // ===== State Management =====
+        function setState(newState) {
+            currentState = newState;
+            stateBadge.className = `state-badge ${newState}`;
+            stateBadge.textContent = newState.toUpperCase();
+            updateUI();
+        }
+
+        function updateUI() {
+            const isIdle = currentState === AppState.IDLE;
+            const isRecording = currentState === AppState.RECORDING;
+            const isConfirming = currentState === AppState.CONFIRMING;
+            const isCorrecting = currentState === AppState.CORRECTING;
+            const isSuggesting = currentState === AppState.SUGGESTING;
+
+            // Main button
+            mainBtn.classList.toggle('recording', isRecording);
+            mainBtn.textContent = isRecording ? '■' : '🎤';
+            mainBtn.disabled = currentState === AppState.TRANSCRIBING || isSuggesting;
+
+            // Transcript area
+            transcriptArea.disabled = !(isConfirming || isCorrecting);
+
+            // Action buttons
+            btnVoiceCorrect.disabled = !(isConfirming || isCorrecting);
+            btnComplete.disabled = !(isConfirming || isCorrecting);
+            btnRetry.disabled = isIdle || isRecording;
+
+            // Suggestion panel
+            suggestionPanel.classList.toggle('visible', isSuggesting);
+        }
+
+        function resetToIdle() {
+            currentData = { original: '', final: '', aiSuggestion: '', intentNote: '' };
+            transcriptArea.value = '';
+            intentDisplay.textContent = '';
+            intentDisplay.style.display = 'none';
+            suggestionText.textContent = '';
+            setState(AppState.IDLE);
+            statusText.textContent = '英語で話してみましょう';
+        }
+
+        // ===== Recording Functions =====
+        // mode: 'english' | 'correction' | 'intent'
+        async function startRecording(mode = 'english') {
+            const key = getApiKey();
+            if (!key) {
+                alert('OpenAI API Keyを入力してください');
+                return;
+            }
+
+            await initAudioContext();
+
+            try {
+                stopStream();
+                audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                });
+
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                    ? 'audio/webm;codecs=opus' : 'audio/mp4';
+                mediaRecorder = new MediaRecorder(audioStream, { mimeType });
+
+                audioChunks = [];
+                recordingMode = mode;
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    stopStream();
+                    const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+
+                    if (blob.size < 1000) {
+                        statusText.textContent = '音声が短すぎます';
+                        if (recordingMode === 'intent') {
+                            setState(AppState.SUGGESTING);
+                        } else {
+                            setState(currentData.original ? AppState.CONFIRMING : AppState.IDLE);
+                        }
+                        return;
+                    }
+
+                    if (recordingMode === 'english') {
+                        await processEnglishRecording(blob, mimeType);
+                    } else if (recordingMode === 'correction') {
+                        await processJapaneseCorrection(blob, mimeType);
+                    } else if (recordingMode === 'intent') {
+                        await processIntentRecording(blob, mimeType);
+                    }
+                };
+
+                mediaRecorder.start();
+                setState(AppState.RECORDING);
+                const messages = {
+                    'english': '英語で話してください...',
+                    'correction': '日本語で修正指示を...',
+                    'intent': '日本語で意図を説明してください...'
+                };
+                statusText.textContent = messages[mode];
+
+            } catch (e) {
+                alert('マイクエラー: ' + e.message);
+                statusText.textContent = 'マイクへのアクセスが拒否されました';
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        }
+
+        // ===== Processing Functions =====
+        async function processEnglishRecording(blob, mimeType) {
+            setState(AppState.TRANSCRIBING);
+            statusText.textContent = '認識中...';
+
+            const key = getApiKey();
+            const fd = new FormData();
+            const ext = mimeType.includes('webm') ? 'webm' : 'm4a';
+            fd.append('file', blob, `audio.${ext}`);
+            fd.append('model', 'whisper-1');
+            fd.append('language', 'en'); // 英語として認識
+
+            try {
+                const res = await fetchWithTimeout('https://api.openai.com/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}` },
+                    body: fd
+                }, 30000);
+
+                const data = await res.json();
+                if (!data.text || data.text.trim().length === 0) {
+                    statusText.textContent = '認識できませんでした';
+                    setState(AppState.IDLE);
+                    return;
+                }
+
+                const text = data.text.trim();
+
+                if (!currentData.original) {
+                    currentData.original = text;
+                }
+                currentData.final = text;
+                transcriptArea.value = text;
+
+                setState(AppState.CONFIRMING);
+                statusText.textContent = '認識結果を確認してください';
+
+            } catch (e) {
+                statusText.textContent = e.name === 'AbortError' ? 'タイムアウト' : 'エラーが発生しました';
+                setState(currentData.original ? AppState.CONFIRMING : AppState.IDLE);
+            }
+        }
+
+        async function processJapaneseCorrection(blob, mimeType) {
+            setState(AppState.CORRECTING);
+            statusText.textContent = '修正指示を解析中...';
+
+            const key = getApiKey();
+            const fd = new FormData();
+            const ext = mimeType.includes('webm') ? 'webm' : 'm4a';
+            fd.append('file', blob, `audio.${ext}`);
+            fd.append('model', 'whisper-1');
+            fd.append('language', 'ja'); // 日本語として認識
+
+            try {
+                // 1. 日本語の修正指示を認識
+                const sttRes = await fetchWithTimeout('https://api.openai.com/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}` },
+                    body: fd
+                }, 30000);
+
+                const sttData = await sttRes.json();
+                const instruction = sttData.text?.trim();
+
+                if (!instruction) {
+                    statusText.textContent = '指示を認識できませんでした';
+                    setState(AppState.CONFIRMING);
+                    return;
+                }
+
+                // 「もう一回」系のキーワードチェック
+                if (instruction.includes('もう一回') || instruction.includes('やり直し') ||
+                    instruction.includes('もう1回') || instruction.includes('最初から')) {
+                    statusText.textContent = 'もう一度英語で話してください';
+                    setState(AppState.IDLE);
+                    currentData.original = '';
+                    currentData.final = '';
+                    transcriptArea.value = '';
+                    await startRecording(true);
+                    return;
+                }
+
+                // 2. GPTで修正を適用
+                statusText.textContent = '修正を適用中...';
+
+                const gptRes = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${key}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `You are helping correct an English sentence based on Japanese instructions.
+The user will provide:
+1. Current English text
+2. Japanese correction instruction
+
+Apply the correction and return ONLY the corrected English text, nothing else.
+If the instruction is unclear, make your best interpretation.
+
+Examples:
+- "workじゃなくてwalk" → change "work" to "walk"
+- "最後にピリオドつけて" → add period at end
+- "yesterdayを消して" → remove "yesterday"`
+                            },
+                            {
+                                role: 'user',
+                                content: `Current text: "${currentData.final}"
+Correction instruction: "${instruction}"`
+                            }
+                        ]
+                    })
+                }, 15000);
+
+                const gptData = await gptRes.json();
+                const corrected = gptData.choices[0].message.content.trim();
+
+                currentData.final = corrected;
+                transcriptArea.value = corrected;
+
+                setState(AppState.CONFIRMING);
+                statusText.textContent = `修正適用: "${instruction}"`;
+
+            } catch (e) {
+                statusText.textContent = 'エラーが発生しました';
+                setState(AppState.CONFIRMING);
+            }
+        }
+
+        async function processIntentRecording(blob, mimeType) {
+            statusText.textContent = '意図を認識中...';
+
+            const key = getApiKey();
+            const fd = new FormData();
+            const ext = mimeType.includes('webm') ? 'webm' : 'm4a';
+            fd.append('file', blob, `audio.${ext}`);
+            fd.append('model', 'whisper-1');
+            fd.append('language', 'ja'); // 日本語として認識
+
+            try {
+                const res = await fetchWithTimeout('https://api.openai.com/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}` },
+                    body: fd
+                }, 30000);
+
+                const data = await res.json();
+                const intent = data.text?.trim();
+
+                if (!intent) {
+                    statusText.textContent = '認識できませんでした';
+                    setState(AppState.SUGGESTING);
+                    return;
+                }
+
+                currentData.intentNote = intent;
+                intentDisplay.textContent = `💬 ${intent}`;
+                intentDisplay.style.display = 'block';
+
+                // 再提案を取得
+                await getAISuggestion();
+
+            } catch (e) {
+                statusText.textContent = 'エラーが発生しました';
+                setState(AppState.SUGGESTING);
+            }
+        }
+
+        async function getAISuggestion() {
+            setState(AppState.SUGGESTING);
+            statusText.textContent = 'AIが自然な表現を考えています...';
+
+            const key = getApiKey();
+            const intentNote = currentData.intentNote;
+
+            try {
+                const systemPrompt = `You are an English teacher helping a Japanese learner.
+The learner said something in English. Your job is to:
+1. Understand what they're trying to say
+2. Provide a more natural English expression
+
+Return ONLY the improved English sentence, nothing else.
+Keep the meaning the same, just make it more natural.
+If it's already natural, return it as-is (maybe just fix minor grammar/punctuation).`;
+
+                let userPrompt = `Learner's English: "${currentData.final}"`;
+                if (intentNote) {
+                    userPrompt += `\n\nThe learner explained their intent in Japanese: "${intentNote}"
+Please consider this context when suggesting a natural expression.`;
+                }
+
+                const res = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${key}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]
+                    })
+                }, 15000);
+
+                const data = await res.json();
+                const suggestion = data.choices[0].message.content.trim();
+
+                currentData.aiSuggestion = suggestion;
+                suggestionText.textContent = suggestion;
+
+                statusText.textContent = 'AIの提案を確認してください';
+
+                // TTS再生
+                await speakText(suggestion);
+
+            } catch (e) {
+                statusText.textContent = 'エラーが発生しました';
+                currentData.aiSuggestion = currentData.final;
+                suggestionText.textContent = currentData.final;
+            }
+        }
+
+        async function speakText(text) {
+            const key = getApiKey();
+            if (!key || !text) return;
+
+            try {
+                const res = await fetchWithTimeout('https://api.openai.com/v1/audio/speech', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${key}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'tts-1',
+                        voice: 'alloy',
+                        input: text
+                    })
+                }, 15000);
+
+                const blob = await res.blob();
+                await playAudioBlob(blob);
+            } catch (e) {
+                console.error('TTS error:', e);
+            }
+        }
+
+        async function speakSuggestion() {
+            await speakText(currentData.aiSuggestion);
+        }
+
+        // ===== Save Functions =====
+        function saveToHistory(useSuggestion = true) {
+            const h = JSON.parse(localStorage.getItem('soliloquyHistory') || '[]');
+
+            const entry = {
+                original: currentData.original,
+                final: currentData.final,
+                aiSuggestion: currentData.aiSuggestion,
+                intentNote: currentData.intentNote || '',
+                savedText: useSuggestion ? currentData.aiSuggestion : currentData.final,
+                timestamp: Date.now(),
+                notionSaved: false
+            };
+
+            h.unshift(entry);
+            localStorage.setItem('soliloquyHistory', JSON.stringify(h.slice(0, 50)));
+
+            renderHistory();
+            resetToIdle();
+            statusText.textContent = '保存しました！';
+        }
+
+        async function saveToNotion(index) {
+            const h = JSON.parse(localStorage.getItem('soliloquyHistory') || '[]');
+            const item = h[index];
+            if (!item || item.notionSaved) return;
+
+            const btnEl = document.getElementById(`notion-${index}`);
+            btnEl.textContent = '...';
+            btnEl.disabled = true;
+
+            try {
+                const res = await fetch('/api/notion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: localStorage.getItem('notionToken'),
+                        database_id: localStorage.getItem('notionDbId'),
+                        original: item.original,
+                        final: item.final,
+                        aiSuggestion: item.aiSuggestion,
+                        intentNote: item.intentNote
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Failed');
+                }
+
+                item.notionSaved = true;
+                localStorage.setItem('soliloquyHistory', JSON.stringify(h));
+                btnEl.textContent = '✓';
+                btnEl.classList.add('saved');
+            } catch (e) {
+                alert('Notion保存エラー: ' + e.message);
+                btnEl.textContent = 'N';
+                btnEl.disabled = false;
+            }
+        }
+
+        function renderHistory() {
+            const h = JSON.parse(localStorage.getItem('soliloquyHistory') || '[]');
+            const nc = hasNotionConfig();
+
+            if (h.length === 0) {
+                historyList.innerHTML = '<div class="empty-state">まだ履歴がありません</div>';
+                return;
+            }
+
+            historyList.innerHTML = h.map((item, idx) => `
+                <div class="history-item">
+                    <div class="history-item-header">
+                        <div class="history-item-content">
+                            ${item.original !== item.final ? `
+                                <div class="history-label">Original</div>
+                                <div class="history-original">${escapeHtml(item.original)}</div>
+                            ` : ''}
+                            <div class="history-label">Your English</div>
+                            <div class="history-final">${escapeHtml(item.final)}</div>
+                            <div class="history-label">AI Suggestion</div>
+                            <div class="history-suggestion" onclick="speakHistoryItem(${idx})">${escapeHtml(item.aiSuggestion)}</div>
+                            ${item.intentNote ? `
+                                <div class="history-label">Intent</div>
+                                <div class="history-original">${escapeHtml(item.intentNote)}</div>
+                            ` : ''}
+                        </div>
+                        ${nc ? `
+                            <button class="notion-btn ${item.notionSaved ? 'saved' : ''}"
+                                    id="notion-${idx}"
+                                    onclick="${item.notionSaved ? '' : `saveToNotion(${idx})`}"
+                                    ${item.notionSaved ? 'disabled' : ''}>
+                                ${item.notionSaved ? '✓' : 'N'}
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function speakHistoryItem(index) {
+            const h = JSON.parse(localStorage.getItem('soliloquyHistory') || '[]');
+            if (h[index]) {
+                await speakText(h[index].aiSuggestion);
+            }
+        }
+
+        function clearHistory() {
+            if (confirm('全ての履歴を削除しますか？')) {
+                localStorage.removeItem('soliloquyHistory');
+                renderHistory();
+            }
+        }
+
+        // ===== Event Listeners =====
+        mainBtn.onclick = async () => {
+            if (currentState === AppState.RECORDING) {
+                stopRecording();
+            } else if (currentState === AppState.IDLE || currentState === AppState.CONFIRMING) {
+                await startRecording('english');
+            }
+        };
+
+        btnVoiceCorrect.onclick = async () => {
+            await startRecording('correction'); // 日本語で修正指示
+        };
+
+        btnComplete.onclick = async () => {
+            currentData.final = transcriptArea.value.trim();
+            if (!currentData.final) {
+                alert('テキストを入力してください');
+                return;
+            }
+            await getAISuggestion();
+        };
+
+        btnRetry.onclick = () => {
+            resetToIdle();
+        };
+
+        btnAccept.onclick = () => {
+            saveToHistory(true);
+        };
+
+        btnKeepOriginal.onclick = () => {
+            saveToHistory(false);
+        };
+
+        btnResuggestion.onclick = async () => {
+            await startRecording('intent'); // 日本語で意図を説明
+        };
+
+        // Manual editing
+        transcriptArea.addEventListener('input', () => {
+            if (currentState === AppState.CONFIRMING || currentState === AppState.CORRECTING) {
+                currentData.final = transcriptArea.value;
+            }
+        });
+
+        // ===== Initialization =====
+        window.onload = () => {
+            // Load saved settings
+            const savedKey = localStorage.getItem('apiKey');
+            if (savedKey) document.getElementById('apiKey').value = savedKey;
+
+            const savedNt = localStorage.getItem('notionToken');
+            if (savedNt) document.getElementById('notionToken').value = savedNt;
+
+            const savedNd = localStorage.getItem('notionDbId');
+            if (savedNd) document.getElementById('notionDbId').value = savedNd;
+
+            // Save settings on input (immediately)
+            document.getElementById('apiKey').addEventListener('input', e =>
+                localStorage.setItem('apiKey', e.target.value));
+            document.getElementById('notionToken').addEventListener('input', e =>
+                localStorage.setItem('notionToken', e.target.value));
+            document.getElementById('notionDbId').addEventListener('input', e =>
+                localStorage.setItem('notionDbId', e.target.value));
+
+            // Render history
+            renderHistory();
+            updateUI();
+        };
+    </script>
+</body>
+</html>
