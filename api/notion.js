@@ -20,6 +20,38 @@ export default async function handler(req, res) {
     }
 
     try {
+        // 今日の日付を取得 (YYYYMMDD形式)
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0]; // 2026-02-05
+        const dateName = dateStr.replace(/-/g, ''); // 20260205
+
+        // 今日のエントリ数を取得して連番を決定
+        const queryResponse = await fetch(`https://api.notion.com/v1/databases/${database_id}/query`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Notion-Version': '2022-06-28'
+            },
+            body: JSON.stringify({
+                filter: {
+                    property: 'Date',
+                    date: {
+                        equals: dateStr
+                    }
+                }
+            })
+        });
+
+        let count = 1;
+        if (queryResponse.ok) {
+            const queryData = await queryResponse.json();
+            count = queryData.results.length + 1;
+        }
+
+        // 連番を2桁でフォーマット (01, 02, ...)
+        const entryName = `${dateName}_${String(count).padStart(2, '0')}`;
+
         const response = await fetch('https://api.notion.com/v1/pages', {
             method: 'POST',
             headers: {
@@ -30,12 +62,12 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 parent: { database_id },
                 properties: {
-                    // Title property - AI Suggestion
+                    // Title property - 日付_連番
                     'Name': {
                         title: [
                             {
                                 text: {
-                                    content: aiSuggestion || final || ''
+                                    content: entryName
                                 }
                             }
                         ]
