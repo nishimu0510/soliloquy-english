@@ -27,7 +27,7 @@ export default async function handler(req, res) {
         const dateStr = jstDate.toISOString().split('T')[0]; // 2026-02-06
         const dateName = dateStr.replace(/-/g, ''); // 20260206
 
-        // 今日のエントリ数を取得して連番を決定
+        // 今日のエントリ数を取得して連番を決定（Nameプレフィックスで検索）
         const queryResponse = await fetch(`https://api.notion.com/v1/databases/${database_id}/query`, {
             method: 'POST',
             headers: {
@@ -37,9 +37,9 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 filter: {
-                    property: 'Date',
-                    date: {
-                        equals: dateStr
+                    property: 'Name',
+                    title: {
+                        starts_with: dateName + '_'
                     }
                 }
             })
