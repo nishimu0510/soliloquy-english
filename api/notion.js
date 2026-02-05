@@ -20,10 +20,12 @@ export default async function handler(req, res) {
     }
 
     try {
-        // 今日の日付を取得 (YYYYMMDD形式)
-        const today = new Date();
-        const dateStr = today.toISOString().split('T')[0]; // 2026-02-05
-        const dateName = dateStr.replace(/-/g, ''); // 20260205
+        // 日本時間で今日の日付を取得 (YYYYMMDD形式)
+        const now = new Date();
+        const jstOffset = 9 * 60 * 60 * 1000; // UTC+9
+        const jstDate = new Date(now.getTime() + jstOffset);
+        const dateStr = jstDate.toISOString().split('T')[0]; // 2026-02-06
+        const dateName = dateStr.replace(/-/g, ''); // 20260206
 
         // 今日のエントリ数を取得して連番を決定
         const queryResponse = await fetch(`https://api.notion.com/v1/databases/${database_id}/query`, {
@@ -52,6 +54,9 @@ export default async function handler(req, res) {
         // 連番を2桁でフォーマット (01, 02, ...)
         const entryName = `${dateName}_${String(count).padStart(2, '0')}`;
 
+        // OriginalとFinalが同じ場合はOriginalを空にする
+        const showOriginal = original && original !== final ? original : '';
+
         const response = await fetch('https://api.notion.com/v1/pages', {
             method: 'POST',
             headers: {
@@ -72,12 +77,12 @@ export default async function handler(req, res) {
                             }
                         ]
                     },
-                    // Original recognition
+                    // Original recognition (空の場合はFinalと同じ)
                     'Original': {
                         rich_text: [
                             {
                                 text: {
-                                    content: original || ''
+                                    content: showOriginal
                                 }
                             }
                         ]
