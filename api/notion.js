@@ -112,10 +112,10 @@ export default async function handler(req, res) {
                             }
                         ]
                     },
-                    // Date
+                    // Date (with time)
                     'Date': {
                         date: {
-                            start: new Date().toISOString().split('T')[0]
+                            start: new Date().toISOString()
                         }
                     }
                 }
