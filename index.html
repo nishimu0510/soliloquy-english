@@ -30,21 +30,25 @@
         .container { width: 100%; max-width: 500px; }
 
         /* Settings */
-        .settings { margin-bottom: 16px; }
+        .settings {
+            margin-bottom: 16px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+        }
         .settings input {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border-radius: 8px;
             border: 1px solid var(--border);
             font-size: 14px;
-            background: var(--card-bg);
-            margin-bottom: 8px;
+            background: var(--bg);
+            margin-top: 8px;
         }
         .settings summary {
-            font-size: 13px;
+            font-size: 14px;
             color: var(--text-secondary);
             cursor: pointer;
-            margin-bottom: 8px;
         }
 
         /* Main recording section */
@@ -55,20 +59,29 @@
             margin-bottom: 16px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
+        /* Fixed bottom record area */
         .record-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
+            padding: 16px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+            background: var(--card-bg);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
         }
         #mainBtn {
             background: var(--primary);
             color: white;
             border: none;
-            width: 80px;
-            height: 80px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
-            font-size: 32px;
+            font-size: 28px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -85,11 +98,14 @@
             cursor: not-allowed;
         }
         #status {
-            margin-top: 12px;
+            margin-top: 8px;
             font-size: 13px;
             color: var(--text-secondary);
-            height: 1.5em;
             text-align: center;
+        }
+        /* Bottom padding for fixed button */
+        .container {
+            padding-bottom: 120px;
         }
 
         /* State badge */
@@ -288,25 +304,18 @@
 </head>
 <body>
     <div class="container">
-        <!-- Settings -->
-        <div class="settings">
+        <!-- Settings (collapsible) -->
+        <details class="settings">
+            <summary>Settings</summary>
             <input type="password" id="apiKey" placeholder="OpenAI API Key">
-            <details>
-                <summary>Notion Settings</summary>
-                <input type="password" id="notionToken" placeholder="Notion Integration Token">
-                <input type="text" id="notionDbId" placeholder="Notion Database ID">
-            </details>
-        </div>
+            <input type="password" id="notionToken" placeholder="Notion Integration Token">
+            <input type="text" id="notionDbId" placeholder="Notion Database ID">
+        </details>
 
         <!-- Main Section -->
         <div class="main-section">
             <div style="text-align: center;">
                 <span class="state-badge idle" id="stateBadge">IDLE</span>
-            </div>
-
-            <div class="record-area">
-                <button id="mainBtn">🎤</button>
-                <div id="status">英語で話してみましょう</div>
             </div>
 
             <div class="text-section">
@@ -353,6 +362,12 @@
                 <div class="empty-state">まだ履歴がありません</div>
             </div>
         </div>
+    </div>
+
+    <!-- Fixed bottom record button -->
+    <div class="record-area">
+        <button id="mainBtn">🎤</button>
+        <div id="status">英語で話してみましょう</div>
     </div>
 
     <script>
