@@ -339,6 +339,7 @@
             <div class="suggestion-panel" id="suggestionPanel">
                 <h4>💡 AI's Suggestion</h4>
                 <div class="suggestion-text" id="suggestionText" onclick="speakSuggestion()"></div>
+                <div class="suggestion-explanation" id="suggestionExplanation" style="font-size: 13px; color: var(--text-secondary); padding: 8px; background: rgba(0,0,0,0.03); border-radius: 8px; margin-bottom: 8px; display: none;"></div>
                 <div class="action-buttons">
                     <button class="action-btn primary" id="btnAccept">採用して保存</button>
                     <button class="action-btn secondary" id="btnKeepOriginal">元のまま保存</button>
@@ -386,6 +387,7 @@
             original: '',
             final: '',
             aiSuggestion: '',
+            aiExplanation: '',
             intentNote: ''
         };
 
@@ -488,11 +490,12 @@
         }
 
         function resetToIdle() {
-            currentData = { original: '', final: '', aiSuggestion: '', intentNote: '' };
+            currentData = { original: '', final: '', aiSuggestion: '', aiExplanation: '', intentNote: '' };
             transcriptArea.value = '';
             intentDisplay.textContent = '';
             intentDisplay.style.display = 'none';
             suggestionText.textContent = '';
+            document.getElementById('suggestionExplanation').style.display = 'none';
             setState(AppState.IDLE);
             statusText.textContent = '英語で話してみましょう';
         }
@@ -750,14 +753,27 @@ Correction instruction: "${instruction}"`
             const intentNote = currentData.intentNote;
 
             try {
-                const systemPrompt = `You are an English teacher helping a Japanese learner.
-The learner said something in English. Your job is to:
-1. Understand what they're trying to say
-2. Provide a more natural English expression
+                const systemPrompt = `You are a native English speaker helping a Japanese learner sound more natural.
 
-Return ONLY the improved English sentence, nothing else.
-Keep the meaning the same, just make it more natural.
-If it's already natural, return it as-is (maybe just fix minor grammar/punctuation).`;
+Your priorities (in order):
+1. Suggest what a native speaker would ACTUALLY say in casual daily conversation
+2. Use natural idioms, phrasal verbs, and colloquial expressions where appropriate
+3. Don't just fix grammar — rephrase to how a native would naturally express the same idea
+4. Keep the tone casual and conversational unless the context clearly requires formality
+
+Return a JSON object with exactly these fields:
+{
+  "suggestion": "the natural English expression",
+  "explanation": "日本語で、なぜこう変えたか簡単に説明（変更がない場合は空文字）"
+}
+
+Rules for explanation:
+- Write in Japanese
+- Focus on WHY the change makes it more natural (e.g. "ネイティブは○○より△△を使うことが多い")
+- If no change is needed, set explanation to ""
+- Keep it to 1-2 sentences
+
+Return ONLY valid JSON, no markdown or extra text.`;
 
                 let userPrompt = `Learner's English: "${currentData.final}"`;
                 if (intentNote) {
@@ -781,10 +797,28 @@ Please consider this context when suggesting a natural expression.`;
                 }, 15000);
 
                 const data = await res.json();
-                const suggestion = data.choices[0].message.content.trim();
+                const raw = data.choices[0].message.content.trim();
+
+                let suggestion, explanation = '';
+                try {
+                    const parsed = JSON.parse(raw);
+                    suggestion = parsed.suggestion;
+                    explanation = parsed.explanation || '';
+                } catch {
+                    suggestion = raw;
+                }
 
                 currentData.aiSuggestion = suggestion;
+                currentData.aiExplanation = explanation;
                 suggestionText.textContent = suggestion;
+
+                const explEl = document.getElementById('suggestionExplanation');
+                if (explanation) {
+                    explEl.textContent = explanation;
+                    explEl.style.display = 'block';
+                } else {
+                    explEl.style.display = 'none';
+                }
 
                 statusText.textContent = 'AIの提案を確認してください';
 
@@ -794,6 +828,7 @@ Please consider this context when suggesting a natural expression.`;
             } catch (e) {
                 statusText.textContent = 'エラーが発生しました';
                 currentData.aiSuggestion = currentData.final;
+                currentData.aiExplanation = '';
                 suggestionText.textContent = currentData.final;
             }
         }
@@ -835,6 +870,7 @@ Please consider this context when suggesting a natural expression.`;
                 original: currentData.original,
                 final: currentData.final,
                 aiSuggestion: currentData.aiSuggestion,
+                aiExplanation: currentData.aiExplanation || '',
                 intentNote: currentData.intentNote || '',
                 savedText: useSuggestion ? currentData.aiSuggestion : currentData.final,
                 timestamp: Date.now(),
@@ -868,6 +904,7 @@ Please consider this context when suggesting a natural expression.`;
                         original: item.original,
                         final: item.final,
                         aiSuggestion: item.aiSuggestion,
+                        aiExplanation: item.aiExplanation || '',
                         intentNote: item.intentNote
                     })
                 });
@@ -909,6 +946,9 @@ Please consider this context when suggesting a natural expression.`;
                             <div class="history-final">${escapeHtml(item.final)}</div>
                             <div class="history-label">AI Suggestion</div>
                             <div class="history-suggestion" onclick="speakHistoryItem(${idx})">${escapeHtml(item.aiSuggestion)}</div>
+                            ${item.aiExplanation ? `
+                                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(item.aiExplanation)}</div>
+                            ` : ''}
                             ${item.intentNote ? `
                                 <div class="history-label">Intent</div>
                                 <div class="history-original">${escapeHtml(item.intentNote)}</div>

@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { token, database_id, original, final, aiSuggestion, intentNote } = req.body;
+    const { token, database_id, original, final, aiSuggestion, aiExplanation, intentNote } = req.body;
 
     if (!token || !database_id) {
         return res.status(400).json({ error: 'Missing Notion credentials' });
@@ -113,6 +113,16 @@ export default async function handler(req, res) {
                             {
                                 text: {
                                     content: intentNote || ''
+                                }
+                            }
+                        ]
+                    },
+                    // AI explanation (why the suggestion was made)
+                    'Memo': {
+                        rich_text: [
+                            {
+                                text: {
+                                    content: aiExplanation || ''
                                 }
                             }
                         ]
