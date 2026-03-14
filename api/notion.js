@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { token, database_id, original, final, aiSuggestion, aiExplanation, intentNote } = req.body;
+    const { token, database_id, original, final, aiSuggestion, aiSuggestionOriginal, aiExplanation, intentNote } = req.body;
 
     if (!token || !database_id) {
         return res.status(400).json({ error: 'Missing Notion credentials' });
@@ -97,7 +97,17 @@ export default async function handler(req, res) {
                             }
                         ]
                     },
-                    // AI Suggestion
+                    // AI Suggestion (original style, minimal correction)
+                    'AISuggestion_original': {
+                        rich_text: [
+                            {
+                                text: {
+                                    content: aiSuggestionOriginal || ''
+                                }
+                            }
+                        ]
+                    },
+                    // AI Suggestion (enriched natural expression)
                     'AISuggestion': {
                         rich_text: [
                             {

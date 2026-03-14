@@ -337,7 +337,11 @@
 
             <!-- AI Suggestion Panel -->
             <div class="suggestion-panel" id="suggestionPanel">
-                <h4>💡 AI's Suggestion</h4>
+                <div id="suggestionOriginalBlock" style="display: none; margin-bottom: 12px;">
+                    <h4 style="margin: 0 0 6px 0; font-size: 13px; color: #888;">✏️ 最小限の修正（あなたの表現ベース）</h4>
+                    <div class="suggestion-text" id="suggestionOriginalText" onclick="speakSuggestionOriginal()" style="background: #f5f5f7; font-size: 15px;"></div>
+                </div>
+                <h4>💡 AI's Suggestion（より自然な表現）</h4>
                 <div class="suggestion-text" id="suggestionText" onclick="speakSuggestion()"></div>
                 <div class="suggestion-explanation" id="suggestionExplanation" style="font-size: 13px; color: var(--text-secondary); padding: 8px; background: rgba(0,0,0,0.03); border-radius: 8px; margin-bottom: 8px; display: none;"></div>
                 <div class="action-buttons">
@@ -387,6 +391,7 @@
             original: '',
             final: '',
             aiSuggestion: '',
+            aiSuggestionOriginal: '',
             aiExplanation: '',
             intentNote: ''
         };
@@ -490,7 +495,7 @@
         }
 
         function resetToIdle() {
-            currentData = { original: '', final: '', aiSuggestion: '', aiExplanation: '', intentNote: '' };
+            currentData = { original: '', final: '', aiSuggestion: '', aiSuggestionOriginal: '', aiExplanation: '', intentNote: '' };
             transcriptArea.value = '';
             intentDisplay.textContent = '';
             intentDisplay.style.display = 'none';
@@ -755,14 +760,24 @@ Correction instruction: "${instruction}"`
             try {
                 const systemPrompt = `You are a native English speaker helping a Japanese learner sound more natural and expressive.
 
-Your task is to produce ONE enriched suggestion that achieves BOTH goals simultaneously:
+Your task is to produce TWO suggestions:
+
+--- suggestion_original ---
+Keep the learner's original wording and structure as much as possible.
+Only fix:
+- Clear grammatical errors (wrong tense, subject-verb agreement, missing articles, etc.)
+- Expressions that would clearly confuse a native speaker — replace them with the simplest natural equivalent
+Do NOT rephrase, reorder, or enrich. The result should feel like the learner's own sentence, just corrected.
+
+--- suggestion ---
+Produce an enriched suggestion that achieves BOTH goals simultaneously:
 
 Goal 1 — Natural English:
-1. Suggest "Neutral Natural" English: Focus on expressions that are natural for daily life but not overly slangy. Avoid extreme casualisms (like "What's up?" or "Gonna") unless specifically asked. Aim for a tone that is appropriate for both acquaintances and colleagues.                                                                                            
-2. Use natural idioms, phrasal verbs, and colloquial expressions where appropriate                                                                                                   
-3. Don't just fix grammar — rephrase to how a native would naturally express the same idea                                                                                           
-4. Rephrase for Clarity and Natural Flow: Go beyond simple grammar fixes. Reconstruct awkward, direct translations into the concise, rhythmic phrases a native speaker would use in that specific context.                                                                                                                                                                
-5. Balance Approachability with Politeness: Keep the tone conversational and friendly, but ensure the language remains polite enough for a Japanese learner to use confidently in real-world social or semi-professional situations.   
+1. Suggest "Neutral Natural" English: Focus on expressions that are natural for daily life but not overly slangy. Avoid extreme casualisms (like "What's up?" or "Gonna") unless specifically asked. Aim for a tone that is appropriate for both acquaintances and colleagues.
+2. Use natural idioms, phrasal verbs, and colloquial expressions where appropriate
+3. Don't just fix grammar — rephrase to how a native would naturally express the same idea
+4. Rephrase for Clarity and Natural Flow: Go beyond simple grammar fixes. Reconstruct awkward, direct translations into the concise, rhythmic phrases a native speaker would use in that specific context.
+5. Balance Approachability with Politeness: Keep the tone conversational and friendly, but ensure the language remains polite enough for a Japanese learner to use confidently in real-world social or semi-professional situations.
 
 Goal 2 — Add Volume & Expressiveness using these techniques:
 - Relative clauses: add "who/which/that..." to elaborate on nouns (e.g. "the meeting that we had yesterday")
@@ -773,15 +788,15 @@ Apply at least one of the three volume techniques unless the sentence is already
 
 Return a JSON object with exactly these fields:
 {
+  "suggestion_original": "the minimally corrected version staying close to the learner's original",
   "suggestion": "the enriched natural English expression",
-  "explanation": "日本語で、①どう自然にしたか、②どの表現（関係代名詞・現在分詞・修飾語）を加えたかを簡単に説明（1〜2文）"
+  "explanation": "日本語で、①suggestion_originalでどこを修正したか、②suggestionでどう自然にしてどの表現を加えたかを簡単に説明（2〜3文）"
 }
 
 Rules for explanation:
 - Write in Japanese
-- Mention both the naturalness improvement AND what structural technique was added
-- If no change was needed for one of the goals, focus on the other
-- Keep it concise (1-2 sentences)
+- Describe both suggestions briefly
+- Keep it concise (2-3 sentences)
 
 Return ONLY valid JSON, no markdown or extra text.`;
 
@@ -809,18 +824,28 @@ Please consider this context when suggesting a natural expression.`;
                 const data = await res.json();
                 const raw = data.choices[0].message.content.trim();
 
-                let suggestion, explanation = '';
+                let suggestion, suggestionOriginal = '', explanation = '';
                 try {
                     const parsed = JSON.parse(raw);
                     suggestion = parsed.suggestion;
+                    suggestionOriginal = parsed.suggestion_original || '';
                     explanation = parsed.explanation || '';
                 } catch {
                     suggestion = raw;
                 }
 
                 currentData.aiSuggestion = suggestion;
+                currentData.aiSuggestionOriginal = suggestionOriginal;
                 currentData.aiExplanation = explanation;
                 suggestionText.textContent = suggestion;
+
+                const suggOrigEl = document.getElementById('suggestionOriginalText');
+                if (suggestionOriginal && suggestionOriginal !== suggestion) {
+                    suggOrigEl.textContent = suggestionOriginal;
+                    suggOrigEl.parentElement.style.display = 'block';
+                } else {
+                    suggOrigEl.parentElement.style.display = 'none';
+                }
 
                 const explEl = document.getElementById('suggestionExplanation');
                 if (explanation) {
@@ -872,6 +897,10 @@ Please consider this context when suggesting a natural expression.`;
             await speakText(currentData.aiSuggestion);
         }
 
+        async function speakSuggestionOriginal() {
+            await speakText(currentData.aiSuggestionOriginal);
+        }
+
         // ===== Save Functions =====
         function saveToHistory(useSuggestion = true) {
             const h = JSON.parse(localStorage.getItem('soliloquyHistory') || '[]');
@@ -880,6 +909,7 @@ Please consider this context when suggesting a natural expression.`;
                 original: currentData.original,
                 final: currentData.final,
                 aiSuggestion: currentData.aiSuggestion,
+                aiSuggestionOriginal: currentData.aiSuggestionOriginal || '',
                 aiExplanation: currentData.aiExplanation || '',
                 intentNote: currentData.intentNote || '',
                 savedText: useSuggestion ? currentData.aiSuggestion : currentData.final,
@@ -914,6 +944,7 @@ Please consider this context when suggesting a natural expression.`;
                         original: item.original,
                         final: item.final,
                         aiSuggestion: item.aiSuggestion,
+                        aiSuggestionOriginal: item.aiSuggestionOriginal || '',
                         aiExplanation: item.aiExplanation || '',
                         intentNote: item.intentNote
                     })
@@ -954,6 +985,10 @@ Please consider this context when suggesting a natural expression.`;
                             ` : ''}
                             <div class="history-label">Your English</div>
                             <div class="history-final">${escapeHtml(item.final)}</div>
+                            ${item.aiSuggestionOriginal && item.aiSuggestionOriginal !== item.aiSuggestion ? `
+                                <div class="history-label">最小限の修正</div>
+                                <div class="history-suggestion" style="color: var(--text-secondary); font-weight: normal;" onclick="speakHistoryItemOriginal(${idx})">${escapeHtml(item.aiSuggestionOriginal)}</div>
+                            ` : ''}
                             <div class="history-label">AI Suggestion</div>
                             <div class="history-suggestion" onclick="speakHistoryItem(${idx})">${escapeHtml(item.aiSuggestion)}</div>
                             ${item.aiExplanation ? `
@@ -987,6 +1022,13 @@ Please consider this context when suggesting a natural expression.`;
             const h = JSON.parse(localStorage.getItem('soliloquyHistory') || '[]');
             if (h[index]) {
                 await speakText(h[index].aiSuggestion);
+            }
+        }
+
+        async function speakHistoryItemOriginal(index) {
+            const h = JSON.parse(localStorage.getItem('soliloquyHistory') || '[]');
+            if (h[index]?.aiSuggestionOriginal) {
+                await speakText(h[index].aiSuggestionOriginal);
             }
         }
 
