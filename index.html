@@ -1023,8 +1023,11 @@ Return ONLY valid JSON, no markdown or extra text.`;
                             ` : ''}
                             <div class="history-label">AI Suggestion</div>
                             <div class="history-suggestion" onclick="speakHistoryItem(${idx})">${escapeHtml(item.aiSuggestion)}</div>
-                            ${item.aiExplanation ? `
-                                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(item.aiExplanation)}</div>
+                            ${item.aiExplanationOriginal || item.aiExplanation ? `
+                                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                                    ${item.aiExplanationOriginal ? `<div>①${escapeHtml(item.aiExplanationOriginal)}</div>` : ''}
+                                    ${item.aiExplanation ? `<div style="margin-top: 4px;">②${escapeHtml(item.aiExplanation)}</div>` : ''}
+                                </div>
                             ` : ''}
                             ${item.intentNote ? `
                                 <div class="history-label">Intent</div>
