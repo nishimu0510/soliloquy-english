@@ -977,7 +977,7 @@ Return ONLY valid JSON, no markdown or extra text.`;
                         final: item.final,
                         aiSuggestion: item.aiSuggestion,
                         aiSuggestionOriginal: item.aiSuggestionOriginal || '',
-                        aiExplanation: item.aiExplanation || '',
+                        aiExplanation: [item.aiExplanationOriginal ? `①${item.aiExplanationOriginal}` : '', item.aiExplanation ? `②${item.aiExplanation}` : ''].filter(Boolean).join('\n\n'),
                         intentNote: item.intentNote
                     })
                 });
