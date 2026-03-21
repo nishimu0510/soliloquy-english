@@ -340,6 +340,7 @@
                 <div id="suggestionOriginalBlock" style="display: none; margin-bottom: 12px;">
                     <h4 style="margin: 0 0 6px 0; font-size: 13px; color: #888;">✏️ 最小限の修正（あなたの表現ベース）</h4>
                     <div class="suggestion-text" id="suggestionOriginalText" onclick="speakSuggestionOriginal()" style="background: #f5f5f7; font-size: 15px;"></div>
+                    <div class="suggestion-explanation" id="suggestionOriginalExplanation" style="font-size: 13px; color: var(--text-secondary); padding: 8px; background: rgba(0,0,0,0.03); border-radius: 8px; margin-top: 6px; display: none;"></div>
                 </div>
                 <h4>💡 AI's Suggestion（より自然な表現）</h4>
                 <div class="suggestion-text" id="suggestionText" onclick="speakSuggestion()"></div>
@@ -393,6 +394,7 @@
             aiSuggestion: '',
             aiSuggestionOriginal: '',
             aiExplanation: '',
+            aiExplanationOriginal: '',
             intentNote: ''
         };
 
@@ -495,7 +497,7 @@
         }
 
         function resetToIdle() {
-            currentData = { original: '', final: '', aiSuggestion: '', aiSuggestionOriginal: '', aiExplanation: '', intentNote: '' };
+            currentData = { original: '', final: '', aiSuggestion: '', aiSuggestionOriginal: '', aiExplanation: '', aiExplanationOriginal: '', intentNote: '' };
             transcriptArea.value = '';
             intentDisplay.textContent = '';
             intentDisplay.style.display = 'none';
@@ -758,17 +760,73 @@ Correction instruction: "${instruction}"`
             const intentNote = currentData.intentNote;
 
             try {
-                const systemPrompt = `You are a native English speaker helping a Japanese learner sound more natural and expressive.
+                const contextNote = intentNote
+                    ? `\n\nThe learner explained their intent in Japanese: "${intentNote}"\nPlease consider this context.`
+                    : '';
 
-Your task is to produce TWO suggestions:
+                // --- Call 1: 最小限修正 ---
+                const systemPrompt1 = `You are a native English speaker helping a Japanese learner.
 
---- suggestion_original ---
+Your task: minimally correct the learner's English sentence.
+
 Fix ALL grammatical errors.
 Only change a word if its usage is clearly unnatural — if the meaning comes through, leave it as is.
 Do NOT add anything new.
 
---- suggestion ---
-Produce an enriched suggestion that achieves BOTH goals simultaneously:
+Return a JSON object with exactly these fields:
+{
+  "suggestion_original": "the minimally corrected sentence",
+  "explanation": "日本語で、どこをどう修正したか簡潔に説明。修正がなければ「文法的な誤りはありませんでした」と書く。"
+}
+
+Return ONLY valid JSON, no markdown or extra text.`;
+
+                const res1 = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        messages: [
+                            { role: 'system', content: systemPrompt1 },
+                            { role: 'user', content: `Learner's English: "${currentData.final}"${contextNote}` }
+                        ]
+                    })
+                }, 15000);
+
+                const data1 = await res1.json();
+                const raw1 = data1.choices[0].message.content.trim();
+
+                let suggestionOriginal = '', explanationOriginal = '';
+                try {
+                    const parsed1 = JSON.parse(raw1);
+                    suggestionOriginal = parsed1.suggestion_original || '';
+                    explanationOriginal = parsed1.explanation || '';
+                } catch {
+                    suggestionOriginal = currentData.final;
+                }
+
+                currentData.aiSuggestionOriginal = suggestionOriginal;
+                currentData.aiExplanationOriginal = explanationOriginal;
+
+                const suggOrigEl = document.getElementById('suggestionOriginalText');
+                const explOrigEl = document.getElementById('suggestionOriginalExplanation');
+                if (suggestionOriginal) {
+                    suggOrigEl.textContent = suggestionOriginal;
+                    suggOrigEl.parentElement.style.display = 'block';
+                } else {
+                    suggOrigEl.parentElement.style.display = 'none';
+                }
+                if (explanationOriginal) {
+                    explOrigEl.textContent = explanationOriginal;
+                    explOrigEl.style.display = 'block';
+                } else {
+                    explOrigEl.style.display = 'none';
+                }
+
+                // --- Call 2: より自然な表現 ---
+                const systemPrompt2 = `You are a native English speaker helping a Japanese learner sound more natural and expressive.
+
+Your task: produce an enriched, natural suggestion based on the learner's sentence.
 
 Goal 1 — Natural English:
 1. Suggest "Neutral Natural" English: Focus on expressions that are natural for daily life but not overly slangy. Avoid extreme casualisms (like "What's up?" or "Gonna") unless specifically asked. Aim for a tone that is appropriate for both acquaintances and colleagues.
@@ -786,64 +844,39 @@ Apply at least one of the three volume techniques unless the sentence is already
 
 Return a JSON object with exactly these fields:
 {
-  "suggestion_original": "the minimally corrected version staying close to the learner's original",
   "suggestion": "the enriched natural English expression",
-  "explanation": "日本語で、①suggestion_originalでどこを修正したか、②suggestionでどう自然にしてどの表現を加えたかを簡単に説明（2〜3文）"
+  "explanation": "日本語で、どう自然にしてどの表現を加えたかを簡潔に説明（2〜3文）"
 }
-
-Rules for explanation:
-- Write in Japanese
-- Describe both suggestions briefly
-- Keep it concise (2-3 sentences)
 
 Return ONLY valid JSON, no markdown or extra text.`;
 
-                let userPrompt = `Learner's English: "${currentData.final}"`;
-                if (intentNote) {
-                    userPrompt += `\n\nThe learner explained their intent in Japanese: "${intentNote}"
-Please consider this context when suggesting a natural expression.`;
-                }
-
-                const res = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+                const res2 = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${key}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model: 'gpt-4o-mini',
                         messages: [
-                            { role: 'system', content: systemPrompt },
-                            { role: 'user', content: userPrompt }
+                            { role: 'system', content: systemPrompt2 },
+                            { role: 'user', content: `Learner's English: "${currentData.final}"${contextNote}` }
                         ]
                     })
                 }, 15000);
 
-                const data = await res.json();
-                const raw = data.choices[0].message.content.trim();
+                const data2 = await res2.json();
+                const raw2 = data2.choices[0].message.content.trim();
 
-                let suggestion, suggestionOriginal = '', explanation = '';
+                let suggestion = '', explanation = '';
                 try {
-                    const parsed = JSON.parse(raw);
-                    suggestion = parsed.suggestion;
-                    suggestionOriginal = parsed.suggestion_original || '';
-                    explanation = parsed.explanation || '';
+                    const parsed2 = JSON.parse(raw2);
+                    suggestion = parsed2.suggestion || '';
+                    explanation = parsed2.explanation || '';
                 } catch {
-                    suggestion = raw;
+                    suggestion = raw2;
                 }
 
                 currentData.aiSuggestion = suggestion;
-                currentData.aiSuggestionOriginal = suggestionOriginal;
                 currentData.aiExplanation = explanation;
                 suggestionText.textContent = suggestion;
-
-                const suggOrigEl = document.getElementById('suggestionOriginalText');
-                if (suggestionOriginal && suggestionOriginal !== suggestion) {
-                    suggOrigEl.textContent = suggestionOriginal;
-                    suggOrigEl.parentElement.style.display = 'block';
-                } else {
-                    suggOrigEl.parentElement.style.display = 'none';
-                }
 
                 const explEl = document.getElementById('suggestionExplanation');
                 if (explanation) {
@@ -909,6 +942,7 @@ Please consider this context when suggesting a natural expression.`;
                 aiSuggestion: currentData.aiSuggestion,
                 aiSuggestionOriginal: currentData.aiSuggestionOriginal || '',
                 aiExplanation: currentData.aiExplanation || '',
+                aiExplanationOriginal: currentData.aiExplanationOriginal || '',
                 intentNote: currentData.intentNote || '',
                 savedText: useSuggestion ? currentData.aiSuggestion : currentData.final,
                 timestamp: Date.now(),
